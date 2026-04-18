@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DynamicChord – Learn, Play & Master Music</title>
+    <meta name="description" content="Professional music tool with chord transposition, metronome, and chord library for guitarists and pianists.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="root"></div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<!-- ============ DATA & MUSIC THEORY ============ -->
+<script>
+var NOTES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+var NOTES_FLAT=["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
+
+function parseChord(s){var m=s.match(/^([A-G][b#]?)(.*)$/);if(!m)return{root:s,suffix:""};return{root:m[1],suffix:m[2]}}
+function noteIdx(n){var i=NOTES.indexOf(n);if(i===-1)i=NOTES_FLAT.indexOf(n);return i}
+function transposeChord(s,steps){var p=parseChord(s);var i=noteIdx(p.root);if(i===-1)return s;return NOTES[((i+steps)%12+12)%12]+p.suffix}
+function getScaleNotes(key){var p=parseChord(key);var i=noteIdx(p.root);if(i===-1)return[];var iv=p.suffix.indexOf('m')!==-1?[0,2,3,5,7,8,10]:[0,2,4,5,7,9,11];return iv.map(function(x){return NOTES[(i+x)%12]})}
+
+var PIANO_IV={"": [0,4,7],"m":[0,3,7],"7":[0,4,7,10],"m7":[0,3,7,10],"maj7":[0,4,7,11],"dim":[0,3,6],"aug":[0,4,8],"sus4":[0,5,7],"sus2":[0,2,7],"add9":[0,4,7,14],"7sus4":[0,5,7,10]};
+function getPianoKeys(s){var p=parseChord(s);var i=noteIdx(p.root);if(i===-1)return[];var iv=PIANO_IV[p.suffix]||PIANO_IV[""];return iv.map(function(x){return(i+x)%12})}
+function getChordNotes(s){var p=parseChord(s);var i=noteIdx(p.root);if(i===-1)return[];var iv=PIANO_IV[p.suffix]||PIANO_IV[""];return iv.map(function(x){return NOTES[(i+x)%12]})}
+
+// ===== VERIFIED GUITAR CHORD SHAPES =====
+// [6th(lowE), 5th(A), 4th(D), 3rd(G), 2nd(B), 1st(highE)], -1=muted, 0=open
+var GC={
+  "C":[-1,3,2,0,1,0],"D":[-1,-1,0,2,3,2],"E":[0,2,2,1,0,0],"F":[1,3,3,2,1,1],
+  "G":[3,2,0,0,0,3],"A":[-1,0,2,2,2,0],"B":[-1,2,4,4,4,2],
+  "C#":[-1,4,3,1,2,1],"Db":[-1,4,3,1,2,1],"D#":[-1,-1,1,3,4,3],"Eb":[-1,-1,1,3,4,3],
+  "F#":[2,4,4,3,2,2],"Gb":[2,4,4,3,2,2],"G#":[4,6,6,5,4,4],"Ab":[4,6,6,5,4,4],
+  "A#":[-1,1,3,3,3,1],"Bb":[-1,1,3,3,3,1],
+  "Cm":[-1,3,5,5,4,3],"Dm":[-1,-1,0,2,3,1],"Em":[0,2,2,0,0,0],"Fm":[1,3,3,1,1,1],
+  "Gm":[3,5,5,3,3,3],"Am":[-1,0,2,2,1,0],"Bm":[-1,2,4,4,3,2],
+  "C#m":[-1,4,6,6,5,4],"Dbm":[-1,4,6,6,5,4],"D#m":[-1,-1,1,3,4,2],"Ebm":[-1,-1,1,3,4,2],
+  "F#m":[2,4,4,2,2,2],"Gbm":[2,4,4,2,2,2],"G#m":[4,6,6,4,4,4],"Abm":[4,6,6,4,4,4],
+  "A#m":[-1,1,3,3,2,1],"Bbm":[-1,1,3,3,2,1],
+  "C7":[-1,3,2,3,1,0],"D7":[-1,-1,0,2,1,2],"E7":[0,2,0,1,0,0],"F7":[1,3,1,2,1,1],
+  "G7":[3,2,0,0,0,1],"A7":[-1,0,2,0,2,0],"B7":[-1,2,1,2,0,2],
+  "Cm7":[-1,3,5,3,4,3],"Dm7":[-1,-1,0,2,1,1],"Em7":[0,2,2,0,3,0],"Am7":[-1,0,2,0,1,0],"Bm7":[-1,2,0,2,0,2],
+  "Cmaj7":[-1,3,2,0,0,0],"Dmaj7":[-1,-1,0,2,2,2],"Emaj7":[0,2,1,1,0,0],
+  "Fmaj7":[-1,-1,3,2,1,0],"Gmaj7":[3,2,0,0,0,2],"Amaj7":[-1,0,2,1,2,0],
+  "Dsus4":[-1,-1,0,2,3,3],"Dsus2":[-1,-1,0,2,3,0],"Esus4":[0,2,2,2,0,0],
+  "Asus4":[-1,0,2,2,3,0],"Asus2":[-1,0,2,2,0,0],"Csus4":[-1,3,3,0,1,1],
+  "Cadd9":[-1,3,2,0,3,0],"A7sus4":[-1,0,2,0,3,0],
+  "Cdim":[-1,3,4,2,4,2],"Ddim":[-1,-1,0,1,3,1],
+  "Caug":[-1,3,2,1,1,0],"Eaug":[0,3,2,1,1,0]
+};
+
+// Generate barre chord for any chord not hardcoded
+function getGuitarShape(name){
+  if(GC[name])return GC[name];
+  var p=parseChord(name);var ri=noteIdx(p.root);if(ri===-1)return null;
+  // E-shape barre (root on 6th string)
+  var ef=(ri-4+12)%12; // E=0
+  // A-shape barre (root on 5th string)
+  var af=(ri-9+12)%12; // A=0
+  var suf=p.suffix;
+  // For frets > 0 on either shape, pick the lower one
+  var useE = ef>0 && (ef<=af||af===0);
+  if(useE){
+    var f=ef;
+    if(suf==='m')return[f,f+2,f+2,f,f,f];
+    if(suf==='7')return[f,f+2,f,f+1,f,f];
+    if(suf==='m7')return[f,f+2,f,f,f,f];
+    if(suf==='maj7')return[f,f+2,f+1,f+1,f,f];
+    if(suf==='dim')return[f,-1,f+1,f,f+1,-1];
+    if(suf==='aug')return[f,f+3,f+2,f+1,f+1,f];
+    if(suf==='sus4')return[f,f+2,f+2,f+2,f,f];
+    if(suf==='sus2')return[f,f+2,f+2,f-1>0?f-1:-1,f,f];
+    return[f,f+2,f+2,f+1,f,f]; // major
+  } else {
+    var f=af;if(f===0)f=12; // avoid open if not hardcoded
+    if(suf==='m')return[-1,f,f+2,f+2,f+1,f];
+    if(suf==='7')return[-1,f,f+2,f,f+2,f];
+    if(suf==='m7')return[-1,f,f+2,f,f+1,f];
+    if(suf==='maj7')return[-1,f,f+2,f+1,f+2,f];
+    if(suf==='dim')return[-1,f,f+1,-1,f+1,f];
+    if(suf==='aug')return[-1,f,f+3,f+2,f+2,f];
+    if(suf==='sus4')return[-1,f,f+2,f+2,f+3,f];
+    if(suf==='sus2')return[-1,f,f+2,f+2,f,f];
+    return[-1,f,f+2,f+2,f+2,f]; // major
+  }
+}
+
+// ===== CHORD TYPES for Library =====
+var CHORD_TYPES=[
+  {suffix:"",label:"Major"},{suffix:"m",label:"Minor"},
+  {suffix:"7",label:"Dom 7th"},{suffix:"m7",label:"Min 7th"},{suffix:"maj7",label:"Maj 7th"},
+  {suffix:"sus2",label:"Sus2"},{suffix:"sus4",label:"Sus4"},
+  {suffix:"dim",label:"Dim"},{suffix:"aug",label:"Aug"}
+];
+var ROOT_NOTES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];var SONGS=[
+  // ===== ENGLISH SONGS =====
+  {id:1,title:"Wonderwall",artist:"Oasis",bpm:87,key:"F#m",
+   chords:["Em7","G","Dsus4","A7sus4","Cadd9"],
+   guitar:{capo:2,strum:"D  D  U  U  D  U"},piano:{arp:"1-5-8 (driving eighths)"}},
+  {id:2,title:"Let It Be",artist:"The Beatles",bpm:72,key:"C",
+   chords:["C","G","Am","F"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8 (block chord)"}},
+  {id:3,title:"Someone Like You",artist:"Adele",bpm:67,key:"A",
+   chords:["A","E","F#m","D"],
+   guitar:{capo:2,strum:"D  D  D  D"},piano:{arp:"1-3-5-8-5-3 (rolling)"}},
+  {id:4,title:"Hotel California",artist:"Eagles",bpm:74,key:"Bm",
+   chords:["Bm","F#","A","E","G","D","Em"],
+   guitar:{capo:0,strum:"D  DU  UD  DU"},piano:{arp:"1-5-8 with pushes"}},
+  {id:5,title:"Perfect",artist:"Ed Sheeran",bpm:63,key:"G",
+   chords:["G","Em","C","D"],
+   guitar:{capo:1,strum:"D  DU  UDU"},piano:{arp:"1-3-5-8 (waltz 6/8)"}},
+  {id:6,title:"Hallelujah",artist:"Leonard Cohen",bpm:56,key:"C",
+   chords:["C","Am","F","G","E7"],
+   guitar:{capo:0,strum:"D  DU  DU  DU  DU  DU"},piano:{arp:"1-5-8-5-3-5 (fingerpicked 6/8)"}},
+  {id:7,title:"Stitches",artist:"Shawn Mendes",bpm:150,key:"Bm",
+   chords:["Bm","G","A","D"],
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (pop driving)"}},
+  {id:8,title:"Shape of You",artist:"Ed Sheeran",bpm:96,key:"C#m",
+   chords:["C#m","F#m","A","B"],
+   guitar:{capo:4,strum:"D  DU  DU  DU"},piano:{arp:"1-5-1-5 (synth bass)"}},
+  {id:9,title:"Imagine",artist:"John Lennon",bpm:75,key:"C",
+   chords:["C","Cmaj7","F"],
+   guitar:{capo:0,strum:"D  D  D  D"},piano:{arp:"1-3-5-8 (gentle rolling)"}},
+  {id:10,title:"Photograph",artist:"Ed Sheeran",bpm:108,key:"E",
+   chords:["E","C#m","B","A"],
+   guitar:{capo:4,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (pop)"}},
+  {id:11,title:"Thinking Out Loud",artist:"Ed Sheeran",bpm:79,key:"D",
+   chords:["D","D","G","A"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8 (R&B groove)"}},
+  {id:12,title:"Love Yourself",artist:"Justin Bieber",bpm:100,key:"E",
+   chords:["E","B","G#m","C#m","A"],
+   guitar:{capo:4,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (fingerstyle)"}},
+  {id:13,title:"Counting Stars",artist:"OneRepublic",bpm:122,key:"Am",
+   chords:["Am","C","G","F"],
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8-5 (driving)"}},
+  {id:14,title:"Hey Jude",artist:"The Beatles",bpm:74,key:"F",
+   chords:["F","C","C7","Bb"],
+   guitar:{capo:5,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8 (ballad)"}},
+  {id:15,title:"Yesterday",artist:"The Beatles",bpm:96,key:"F",
+   chords:["F","Em","A7","Dm","Bb","C"],
+   guitar:{capo:5,strum:"D  D  DU  D"},piano:{arp:"1-3-5 (gentle)"}},
+  {id:16,title:"No Woman No Cry",artist:"Bob Marley",bpm:80,key:"C",
+   chords:["C","G","Am","F"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-5-8 (reggae bounce)"}},
+  {id:17,title:"Wish You Were Here",artist:"Pink Floyd",bpm:62,key:"G",
+   chords:["Em","G","A7sus4","A7","C","D","Am"],
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8-5 (acoustic)"}},
+  {id:18,title:"All of Me",artist:"John Legend",bpm:63,key:"Ab",
+   chords:["Ab","Fm","Db","Eb"],
+   guitar:{capo:1,strum:"D  D  D  D"},piano:{arp:"1-3-5-8-5-3 (ballad rolling)"}},
+  {id:19,title:"Let Her Go",artist:"Passenger",bpm:75,key:"G",
+   chords:["G","D","Em","C"],
+   guitar:{capo:7,strum:"D  DU  UDU"},piano:{arp:"1-5-8-5 (fingerpicked)"}},
+  {id:20,title:"Shallow",artist:"Lady Gaga & Bradley Cooper",bpm:96,key:"G",
+   chords:["G","D","Em","C","Am"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8 (ballad)"}},
+  {id:21,title:"A Thousand Years",artist:"Christina Perri",bpm:69,key:"Bb",
+   chords:["Bb","F","Gm","Eb"],
+   guitar:{capo:3,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8-5-3 (waltz rolling)"}},
+  {id:22,title:"Can't Help Falling in Love",artist:"Elvis Presley",bpm:71,key:"C",
+   chords:["C","Em","Am","F","G"],
+   guitar:{capo:0,strum:"D  DU  DU"},piano:{arp:"1-3-5 (slow waltz)"}},
+  {id:23,title:"Viva La Vida",artist:"Coldplay",bpm:138,key:"Ab",
+   chords:["Db","Ab","Eb","Fm"],
+   guitar:{capo:1,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (anthemic)"}},
+  {id:24,title:"Fix You",artist:"Coldplay",bpm:69,key:"Eb",
+   chords:["Eb","Gm","Cm","Bb"],
+   guitar:{capo:3,strum:"D  D  D  D"},piano:{arp:"1-5-8-5 (gentle build)"}},
+  {id:25,title:"Knockin' on Heaven's Door",artist:"Bob Dylan",bpm:69,key:"G",
+   chords:["G","D","Am","C"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8 (simple)"}},
+  {id:26,title:"Stay With Me",artist:"Sam Smith",bpm:84,key:"Am",
+   chords:["Am","F","C"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8 (gospel)"}},
+  {id:27,title:"Say You Won't Let Go",artist:"James Arthur",bpm:84,key:"G",
+   chords:["G","Em","C","D"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-5-8 (pop ballad)"}},
+  {id:28,title:"Zombie",artist:"The Cranberries",bpm:84,key:"Em",
+   chords:["Em","C","G","D"],
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (rock driving)"}},
+  {id:29,title:"Nothing Else Matters",artist:"Metallica",bpm:69,key:"Em",
+   chords:["Em","D","C","G","B7"],
+   guitar:{capo:0,strum:"D  D  D  D"},piano:{arp:"1-3-5-8-5-3 (fingerpicked)"}},
+  {id:30,title:"River Flows in You",artist:"Yiruma",bpm:66,key:"A",
+   chords:["A","E","F#m","D"],
+   guitar:{capo:0,strum:"D  D  D  D"},piano:{arp:"1-5-8-5-3-5 (classical rolling)"}},
+
+  // ===== HINDI SONGS =====
+  {id:31,title:"Tum Hi Ho",artist:"Arijit Singh (Aashiqui 2)",bpm:70,key:"Am",
+   chords:["Am","F","C","G"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8-5-3 (emotional rolling)"}},
+  {id:32,title:"Kal Ho Naa Ho",artist:"Sonu Nigam",bpm:82,key:"G",
+   chords:["G","Em","C","D"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8 (Bollywood ballad)"}},
+  {id:33,title:"Tere Bina",artist:"A.R. Rahman (Guru)",bpm:76,key:"Em",
+   chords:["Em","C","G","D"],
+   guitar:{capo:0,strum:"D  D  DU  D"},piano:{arp:"1-5-8-5 (Sufi feel)"}},
+  {id:34,title:"Chaiyya Chaiyya",artist:"Sukhwinder Singh (Dil Se)",bpm:130,key:"Am",
+   chords:["Am","G","F","Em"],
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (driving rhythm)"}},
+  {id:35,title:"Kabira",artist:"Arijit Singh (YJHD)",bpm:108,key:"G",
+   chords:["G","C","Em","D"],
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (folk pop)"}},
+  {id:36,title:"Channa Mereya",artist:"Arijit Singh (ADHM)",bpm:74,key:"Am",
+   chords:["Am","F","C","G","Dm"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8-5-3 (heartbreak ballad)"}},
+  {id:37,title:"Agar Tum Saath Ho",artist:"Arijit & Alka (Tamasha)",bpm:76,key:"Em",
+   chords:["Em","G","D","C","Am"],
+   guitar:{capo:0,strum:"D  D  D  D"},piano:{arp:"1-3-5-8 (slow emotional)"}},
+  {id:38,title:"Pehla Nasha",artist:"Udit Narayan (JJWS)",bpm:90,key:"D",
+   chords:["D","A","Bm","G"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8 (romantic pop)"}},
+  {id:39,title:"Tum Se Hi",artist:"Mohit Chauhan (Jab We Met)",bpm:78,key:"G",
+   chords:["G","Em","C","D"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-5-8 (acoustic feel)"}},
+  {id:40,title:"Kun Faya Kun",artist:"A.R. Rahman (Rockstar)",bpm:82,key:"Em",
+   chords:["Em","D","C","G","Am"],
+   guitar:{capo:0,strum:"D  DU  DU  DU  DU  DU"},piano:{arp:"1-5-8-5-3-5 (Sufi 6/8)"}},
+  {id:41,title:"Ilahi",artist:"Arijit Singh (YJHD)",bpm:120,key:"G",
+   chords:["G","D","Em","C"],
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (travel pop)"}},
+  {id:42,title:"Khairiyat",artist:"Arijit Singh (Chhichhore)",bpm:68,key:"G",
+   chords:["G","Em","Am","D","C"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8-5-3 (gentle rolling)"}},
+  {id:43,title:"Raabta",artist:"Arijit Singh",bpm:74,key:"Em",
+   chords:["Em","C","G","D"],
+   guitar:{capo:0,strum:"D  D  DU  D"},piano:{arp:"1-3-5-8 (romantic)"}},
+  {id:44,title:"Phir Bhi Tumko Chaahunga",artist:"Arijit Singh (Half Girlfriend)",bpm:72,key:"Am",
+   chords:["Am","F","C","G"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8-5-3 (emotional)"}},
+  {id:45,title:"Tere Sang Yaara",artist:"Atif Aslam (Rustom)",bpm:76,key:"G",
+   chords:["G","Em","C","D"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-5-8 (romantic ballad)"}},
+  {id:46,title:"Enna Sona",artist:"Arijit Singh (OK Jaanu)",bpm:80,key:"Am",
+   chords:["Am","F","C","G"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8 (A.R. Rahman touch)"}},
+  {id:47,title:"Tera Ban Jaunga",artist:"Akhil & Tulsi (Kabir Singh)",bpm:72,key:"G",
+   chords:["G","Em","C","D"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8-5-3 (ballad rolling)"}},
+  {id:48,title:"Dil Diyan Gallan",artist:"Atif Aslam (Tiger Zinda Hai)",bpm:82,key:"Bm",
+   chords:["Bm","G","D","A"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-5-8 (Punjabi romance)"}},
+  {id:49,title:"Tera Yaar Hoon Main",artist:"Arijit Singh (Sonu Ke Titu Ki Sweety)",bpm:76,key:"G",
+   chords:["G","D","Em","C"],
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (friendship pop)"}},
+  {id:50,title:"Samjhawan",artist:"Arijit & Shreya (Humpty Sharma Ki Dulhania)",bpm:72,key:"Am",
+   chords:["Am","F","C","G"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8-5-3 (emotional rolling)"}},
+  {id:51,title:"Ae Dil Hai Mushkil",artist:"Arijit Singh",bpm:78,key:"Am",
+   chords:["Am","F","C","G","Dm"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8 (dramatic ballad)"}},
+  {id:52,title:"Tera Hone Laga Hoon",artist:"Atif Aslam (APKGK)",bpm:90,key:"D",
+   chords:["D","A","Bm","G"],
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (pop romance)"}},
+  {id:53,title:"Sajni",artist:"Jal (Boondh A Drop of Jal)",bpm:80,key:"Em",
+   chords:["Em","C","G","D"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8 (Pakistani pop)"}},
+  {id:54,title:"Bulleya",artist:"Amit Mishra (ADHM)",bpm:102,key:"Am",
+   chords:["Am","F","C","G"],
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8-5 (Sufi energetic)"}},
+  {id:55,title:"Muskurane",artist:"Arijit Singh (CityLights)",bpm:74,key:"Am",
+   chords:["Am","C","G","Dm","F"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8-5-3 (melancholic rolling)"}},
+
+  // ===== MORE ENGLISH CLASSICS =====
+  {id:56,title:"Happier",artist:"Marshmello ft. Bastille",bpm:100,key:"Am",
+   chords:["Am","C","G","D"],
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (EDM pop)"}},
+  {id:57,title:"Memories",artist:"Maroon 5",bpm:91,key:"Bb",
+   chords:["Bb","Gm","Dm","F"],
+   guitar:{capo:3,strum:"D  DU  DU  DU"},piano:{arp:"1-5-8-5 (nostalgic)"}},
+  {id:58,title:"Blinding Lights",artist:"The Weeknd",bpm:171,key:"Fm",
+   chords:["Fm","Cm","Eb","Bb"],
+   guitar:{capo:1,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (synth wave)"}},
+  {id:59,title:"Dance Monkey",artist:"Tones and I",bpm:98,key:"F#m",
+   chords:["F#m","D","A","E"],
+   guitar:{capo:2,strum:"D  DU  UDU"},piano:{arp:"1-5-8-5 (quirky pop)"}},
+  {id:60,title:"Believer",artist:"Imagine Dragons",bpm:125,key:"Am",
+   chords:["Am","Am","F","E"],
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (rock anthem)"}}
+];
+</script>
+
+<!-- ============ REACT APP ============ -->
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback}=React;
+
+/* ======= ROUTER ======= */
+function useHash(){
+  const[hash,setHash]=useState(window.location.hash||'#/');
+  useEffect(()=>{const h=()=>setHash(window.location.hash||'#/');window.addEventListener('hashchange',h);return()=>window.removeEventListener('hashchange',h)},[]);
+  return hash;
+}
+function go(path){window.location.hash=path}
+
+/* ======= SVG ICONS ======= */
+const Ico={
+  search:<svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+  metro:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L8 22h8L12 2z"/><line x1="5" y1="12" x2="19" y2="8"/></svg>,
+  play:<svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polygon points="10 8 16 12 10 16"/></svg>,
+  guitar:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M19 3l-2 2m0 0l-4-1-1 4 4 4 4-1-1-4zm-7 7l-5.3 5.3a2.12 2.12 0 000 3l.1.1a2.12 2.12 0 003 0L15 13"/></svg>,
+  piano:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="4" x2="6" y2="15"/><line x1="10" y1="4" x2="10" y2="15"/><line x1="14" y1="4" x2="14" y2="15"/><line x1="18" y1="4" x2="18" y2="15"/></svg>,
+  back:<svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>,
+  x:<svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+};
+
+/* ======= GUITAR CHORD SVG ======= */
+const GuitarSVG=({name,size})=>{
+  const shape=getGuitarShape(name);
+  if(!shape)return <div style={{fontSize:'0.65rem',color:'var(--tx2)'}}>—</div>;
+  const fretted=shape.filter(f=>f>0);
+  const minF=fretted.length?Math.min(...fretted):1;
+  const maxF=fretted.length?Math.max(...fretted):1;
+  const open=minF<=3&&maxF<=4;
+  const start=open?1:minF;
+  const sc=size==='sm'?0.7:1;
+  const L=12,T=24,SS=10,FS=18,NF=4;
+  return(
+    <svg width={70*sc} height={110*sc} viewBox={`0 0 70 110`} style={{display:'block',margin:'0 auto'}}>
+      {open&&<rect x={L} y={T} width={SS*5} height={3} fill="#eef0f6" rx="1"/>}
+      {!open&&<text x={L-3} y={T+FS-2} fill="#8890a4" fontSize="9" fontWeight="bold" textAnchor="end">{start}fr</text>}
+      {[0,1,2,3,4].map(i=><line key={i} x1={L} y1={T+i*FS} x2={L+SS*5} y2={T+i*FS} stroke="#444" strokeWidth="1"/>)}
+      {[0,1,2,3,4,5].map(i=><line key={i} x1={L+i*SS} y1={T} x2={L+i*SS} y2={T+NF*FS} stroke="#999" strokeWidth={1.4-i*0.1}/>)}
+      {shape.map((f,si)=>{
+        const x=L+si*SS;
+        if(f===-1)return <text key={si} x={x} y={T-5} fill="#ef4444" fontSize="9" fontWeight="bold" textAnchor="middle">✕</text>;
+        if(f===0)return <circle key={si} cx={x} cy={T-8} r="3" fill="none" stroke="#22c55e" strokeWidth="1.5"/>;
+        const df=f-start+1;
+        return <circle key={si} cx={x} cy={T+(df-1)*FS+FS/2} r="4" fill="#00e5ff"/>;
+      })}
+      {/* Barre bar */}
+      {(()=>{if(fretted.length<2)return null;const bf=minF;const bs=[];shape.forEach((f,i)=>{if(f===bf)bs.push(i)});if(bs.length>=2){const fi=Math.min(...bs),la=Math.max(...bs);if(la-fi>=2){const df=bf-start+1;const y=T+(df-1)*FS+FS/2;return<rect x={L+fi*SS-3} y={y-3.5} width={(la-fi)*SS+6} height={7} rx="3.5" fill="#00e5ff" opacity="0.6"/>}}return null})()}
+    </svg>
+  );
+};
+
+/* ======= PIANO CHORD SVG ======= */
+const PianoSVG=({name,size})=>{
+  const hi=getPianoKeys(name);
+  const WK=[0,2,4,5,7,9,11];
+  const BK=[{n:1,a:0},{n:3,a:1},{n:6,a:3},{n:8,a:4},{n:10,a:5}];
+  const sc=size==='sm'?0.75:1;
+  const KW=14*sc,KH=55*sc,BW=9*sc,BH=33*sc;
+  return(
+    <svg width={KW*7+4} height={KH+4} viewBox={`-2 -2 ${KW*7+4} ${KH+4}`} style={{display:'block',margin:'0 auto'}}>
+      {WK.map((n,i)=><rect key={i} x={i*KW} y={0} width={KW} height={KH} fill={hi.includes(n)?"#00e5ff":"#eef0f6"} stroke="#333" strokeWidth="0.8" rx="1"/>)}
+      {BK.map(({n,a})=><rect key={n} x={(a+1)*KW-BW/2} y={0} width={BW} height={BH} fill={hi.includes(n)?"#00e5ff":"#1a1e28"} stroke="#111" strokeWidth="0.5" rx="1"/>)}
+    </svg>
+  );
+};
+
+/* ======= METRONOME SOUND ENGINE ======= */
+function useMetronome(){
+  const[bpm,setBpm]=useState(120);
+  const[playing,setPlaying]=useState(false);
+  const[beat,setBeat]=useState(-1);
+  const[angle,setAngle]=useState(0);
+  const timer=useRef(null);
+  const ctx=useRef(null);
+  const cnt=useRef(0);
+
+  const click=useCallback((accent)=>{
+    if(!ctx.current)ctx.current=new(window.AudioContext||window.webkitAudioContext)();
+    const c=ctx.current,now=c.currentTime;
+    if(c.state==='suspended')c.resume();
+    // Woodblock noise burst
+    const len=c.sampleRate*0.035;
+    const buf=c.createBuffer(1,len,c.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,10);
+    const src=c.createBufferSource();src.buffer=buf;
+    const flt=c.createBiquadFilter();flt.type='bandpass';flt.frequency.value=accent?3800:2400;flt.Q.value=6;
+    const gn=c.createGain();gn.gain.setValueAtTime(accent?0.8:0.45,now);gn.gain.exponentialRampToValueAtTime(0.001,now+0.05);
+    src.connect(flt);flt.connect(gn);gn.connect(c.destination);src.start(now);src.stop(now+0.05);
+    if(accent){const o=c.createOscillator(),og=c.createGain();o.type='triangle';o.frequency.setValueAtTime(2000,now);o.frequency.exponentialRampToValueAtTime(600,now+0.02);og.gain.setValueAtTime(0.2,now);og.gain.exponentialRampToValueAtTime(0.001,now+0.03);o.connect(og);og.connect(c.destination);o.start(now);o.stop(now+0.04)}
+  },[]);
+
+  useEffect(()=>{
+    if(playing){
+      cnt.current=0;
+      const iv=(60/bpm)*1000;
+      const tick=()=>{
+        const acc=cnt.current%4===0;
+        click(acc);setBeat(cnt.current%4);
+        setAngle(cnt.current%2===0?30:-30);
+        cnt.current++;
+      };
+      tick();
+      timer.current=setInterval(tick,iv);
+    }else{
+      clearInterval(timer.current);setBeat(-1);setAngle(0);
+    }
+    return()=>clearInterval(timer.current);
+  },[playing,bpm,click]);
+
+  return{bpm,setBpm,playing,setPlaying,beat,angle};
+}
+
+/* ======= METRONOME UI (reusable) ======= */
+const MetronomeUI=({m,big})=>{
+  const dur=60/m.bpm*0.95;
+  return(
+    <div>
+      {/* Pendulum */}
+      <div className="pendulum-box" style={big?{}:{height:'110px'}}>
+        <div className="piv"/>
+        <div className="arm" style={{transform:`rotate(${m.angle}deg)`,transition:m.playing?`transform ${dur}s cubic-bezier(0.4,0,0.6,1)`:'transform 0.4s ease',height:big?'100px':'80px'}}>
+          <div className="weight"/>
+        </div>
+      </div>
+      {/* Beat dots */}
+      <div className="beat-dots">
+        {[0,1,2,3].map(i=><div key={i} className={`bdot ${m.beat===i?'on':''}`}/>)}
+      </div>
+      {/* BPM */}
+      <div className="bpm-big">{m.bpm}</div>
+      <div className="bpm-label">BPM</div>
+      <input type="range" min="40" max="220" value={m.bpm} onChange={e=>m.setBpm(+e.target.value)} className="slider"/>
+      <div style={{display:'flex',justifyContent:'center'}}>
+        <button className="btn btn-fill" onClick={()=>m.setPlaying(!m.playing)} style={{fontSize:'0.85rem',padding:'0.6rem 2rem'}}>
+          {m.playing?"STOP":"START"}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* ======= NAVBAR ======= */
+const Navbar=({hash})=>{
+  const pg=hash.split('/')[1]||'';
+  const links=[['','Home'],['songs','Songs'],['learn','Learn'],['practice','Practice']];
+  return(
+    <nav className="nav">
+      <div className="nav-logo" onClick={()=>go('#/')}><span className="a">Dynamic</span>Chord</div>
+      <div className="nav-links">
+        {links.map(([k,l])=><div key={k} className={`nav-link ${pg===k?'active':''}`} onClick={()=>go('#/'+k)}>{l}</div>)}
+      </div>
+    </nav>
+  );
+};
+
+/* ===================================================
+   HOME PAGE
+   =================================================== */
+const HomePage=()=>(
+  <div className="page">
+    <div className="container">
+      <div className="hero">
+        <h1>Learn, Play, and<br/><span className="grad">Master Music</span></h1>
+        <p>Search songs, transpose chords instantly, explore a full chord library, and practice with a built-in metronome — designed for both guitarists and pianists.</p>
+        <div className="hero-btns">
+          <button className="btn btn-fill" onClick={()=>go('#/songs')}>🎵 Browse Songs</button>
+          <button className="btn btn-ghost" onClick={()=>go('#/learn')}>📖 Chord Library</button>
+        </div>
+      </div>
+
+      <div className="features">
+        <div className="feat-card" onClick={()=>go('#/songs')}>
+          <div className="feat-icon" style={{background:'rgba(0,229,255,0.1)',color:'var(--ac)'}}>🎶</div>
+          <h3>Song Library</h3>
+          <p>Search songs by name or artist. View chords, strumming patterns, arpeggio patterns, and transpose in real-time.</p>
+          <div className="arrow">Explore Songs →</div>
+        </div>
+        <div className="feat-card" onClick={()=>go('#/learn')}>
+          <div className="feat-icon" style={{background:'rgba(99,102,241,0.1)',color:'var(--ac2)'}}>📚</div>
+          <h3>Chord Library</h3>
+          <p>108+ chords with accurate guitar fretboard diagrams and piano keyboard views. Major, Minor, 7th, Sus, Dim, Aug and more.</p>
+          <div className="arrow">Browse Chords →</div>
+        </div>
+        <div className="feat-card" onClick={()=>go('#/practice')}>
+          <div className="feat-icon" style={{background:'rgba(168,85,247,0.1)',color:'var(--ac3)'}}>🥁</div>
+          <h3>Practice Tools</h3>
+          <p>Interactive metronome with woodblock click, pendulum animation, BPM control, and visual beat tracking.</p>
+          <div className="arrow">Start Practicing →</div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+/* ===================================================
+   SONGS PAGE
+   =================================================== */
+const SongCard=({song})=>(
+  <div className="song-card" onClick={()=>go('#/songs/'+song.id)}>
+    <div className="artist">{song.artist}</div>
+    <h3>{song.title}</h3>
+    <div className="meta">
+      <span className="badge">Key: {song.key}</span>
+      <span className="badge">{song.bpm} BPM</span>
+      {song.guitar.capo>0&&<span className="badge">Capo {song.guitar.capo}</span>}
+    </div>
+    <div className="chords-prev">{song.chords.join(' · ')}</div>
+    <div className="go">View Chords →</div>
+  </div>
+);
+
+const SongDetail=({song,metro})=>{
+  const[tr,setTr]=useState(0);
+  const[showScale,setShowScale]=useState(false);
+  const[tab,setTab]=useState('guitar');
+
+  const chords=song.chords.map(c=>transposeChord(c,tr));
+  const key=transposeChord(song.key,tr);
+  const scale=getScaleNotes(key);
+  let capo=(song.guitar.capo+tr)%12;if(capo<0)capo+=12;
+
+  return(
+    <div className="detail">
+      <div className="back-btn" onClick={()=>go('#/songs')}>{Ico.back} Back to Songs</div>
+
+      <div className="detail-hdr">
+        <div style={{flex:1}}>
+          <h2 style={{fontSize:'2.4rem',lineHeight:1.1,marginBottom:'0.3rem'}}>{song.title}</h2>
+          <div style={{color:'var(--ac)',fontWeight:700,fontSize:'0.8rem',textTransform:'uppercase',letterSpacing:'1.5px',marginBottom:'1rem'}}>{song.artist}</div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'0.4rem'}}>
+            <span className="badge badge-ac" onClick={()=>setShowScale(!showScale)}>🎵 Key: {key} {showScale?'▲':'▼'}</span>
+            <span className="badge badge-ac" onClick={()=>{metro.setBpm(song.bpm);metro.setPlaying(true)}}>
+              {Ico.play} {song.bpm} BPM
+            </span>
+          </div>
+          {showScale&&(
+            <div className="scale-box">
+              <div style={{fontSize:'0.8rem',color:'var(--tx2)',marginBottom:'0.3rem'}}>{key} Scale</div>
+              <div className="scale-notes">{scale.map((n,i)=><span key={i} className="sn">{n}</span>)}</div>
+            </div>
+          )}
+        </div>
+        <div className="transpose">
+          <button className="t-btn" onClick={()=>setTr(t=>t-1)}>−</button>
+          <div className="t-val">{tr>0?'+'+tr:tr}</div>
+          <button className="t-btn" onClick={()=>setTr(t=>t+1)}>+</button>
+        </div>
+      </div>
+
+      {/* Guitar / Piano tabs */}
+      <div className="tabs">
+        <div className={`tab ${tab==='guitar'?'on':''}`} onClick={()=>setTab('guitar')}>🎸 Guitar</div>
+        <div className={`tab ${tab==='piano'?'on':''}`} onClick={()=>setTab('piano')}>🎹 Piano</div>
+      </div>
+
+      {/* Info row */}
+      {tab==='guitar'?(
+        <div className="info-row">
+          <div className="info-block"><h4>Capo</h4><div className="val" style={{fontWeight:700,color:capo?'var(--ac)':'var(--tx)'}}>{capo===0?'None':'Fret '+capo}</div></div>
+          <div className="info-block"><h4>Strumming</h4><div className="val" style={{fontFamily:'monospace',letterSpacing:'1px'}}>{song.guitar.strum}</div></div>
+        </div>
+      ):(
+        <div className="info-row">
+          <div className="info-block"><h4>Arpeggio Pattern</h4><div className="val">{song.piano.arp}</div></div>
+        </div>
+      )}
+
+      {tab==='guitar'&&capo!==0&&tr!==0&&(
+        <div className="tip-box">💡 <strong>Tip:</strong> Capo fret {capo} lets you play original shapes: {song.chords.join(', ')}</div>
+      )}
+
+      <div className="sec-hd"><h2>Chords</h2></div>
+      <div className="chords-row">
+        {chords.map((c,i)=>{
+          const notes=getChordNotes(c);
+          return(
+            <div className="chord-card" key={i} onClick={()=>go('#/learn/'+encodeURIComponent(c))} title="View in Chord Library">
+              <div className="cn">{c}</div>
+              <div className="notes">{notes.join(' – ')}</div>
+              {tab==='guitar'?<GuitarSVG name={c} size="sm"/>:<PianoSVG name={c} size="sm"/>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const SongsPage=({metro})=>{
+  const hash=useHash();
+  const songId=hash.startsWith('#/songs/')?parseInt(hash.split('/')[2]):null;
+  const song=songId?SONGS.find(s=>s.id===songId):null;
+  const[q,setQ]=useState('');
+  const filtered=SONGS.filter(s=>s.title.toLowerCase().includes(q.toLowerCase())||s.artist.toLowerCase().includes(q.toLowerCase()));
+
+  if(song)return <div className="page"><div className="container"><SongDetail song={song} metro={metro}/></div></div>;
+
+  return(
+    <div className="page">
+      <div className="container">
+        <div className="toolbar">
+          <div className="search-wrap">
+            {Ico.search}
+            <input className="search-input" placeholder="Search songs or artists..." value={q} onChange={e=>setQ(e.target.value)}/>
+          </div>
+        </div>
+        <div className="sec-hd"><h2>Featured Songs</h2></div>
+        <div className="grid grid-3">
+          {filtered.map(s=><SongCard key={s.id} song={s}/>)}
+          {filtered.length===0&&<div style={{gridColumn:'1/-1',textAlign:'center',padding:'3rem',color:'var(--tx2)'}}>No songs found for "{q}"</div>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ===================================================
+   LEARN PAGE (CHORD LIBRARY) — Upgraded
+   =================================================== */
+const ChordModal=({name,onClose})=>{
+  const notes=getChordNotes(name);
+  const p=parseChord(name);
+  const typeLabel=(CHORD_TYPES.find(t=>t.suffix===p.suffix)||{}).label||'Chord';
+  const shape=getGuitarShape(name);
+
+  // Play chord sound
+  const playChord=()=>{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const keys=getPianoKeys(name);
+    keys.forEach((semitone,i)=>{
+      const freq=261.63*Math.pow(2,semitone/12); // Middle C octave
+      const osc=ctx.createOscillator();
+      const gn=ctx.createGain();
+      osc.type='triangle';
+      osc.frequency.value=freq;
+      gn.gain.setValueAtTime(0.15,ctx.currentTime);
+      gn.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+1.5);
+      osc.connect(gn);gn.connect(ctx.destination);
+      osc.start(ctx.currentTime+i*0.08);
+      osc.stop(ctx.currentTime+1.5);
+    });
+  };
+
+  return(
+    <div className="chord-modal" onClick={onClose}>
+      <div className="chord-modal-inner" onClick={e=>e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose}>{Ico.x}</button>
+
+        <div style={{textAlign:'center',marginBottom:'1.5rem'}}>
+          <div className="modal-name">{name}</div>
+          <div className="modal-type">{typeLabel} Chord</div>
+          <div className="modal-notes-row">
+            {notes.map((n,i)=><span key={i} className="modal-note">{n}</span>)}
+          </div>
+          <button className="btn btn-fill" onClick={playChord} style={{marginTop:'1rem',fontSize:'0.8rem',padding:'0.5rem 1.5rem'}}>
+            🔊 Play Chord
+          </button>
+        </div>
+
+        <div className="modal-diagrams">
+          <div className="modal-diagram">
+            <div className="modal-diagram-label">🎸 Guitar Fingering</div>
+            <GuitarSVG name={name}/>
+            {shape&&(
+              <div className="modal-frets">
+                {shape.map((f,i)=><span key={i} style={{color:f===-1?'var(--rd)':f===0?'var(--gn)':'var(--tx)'}}>{f===-1?'X':f}</span>)}
+              </div>
+            )}
+          </div>
+          <div className="modal-diagram">
+            <div className="modal-diagram-label">🎹 Piano Keys</div>
+            <PianoSVG name={name}/>
+            <div style={{marginTop:'0.5rem',fontSize:'0.7rem',color:'var(--tx2)'}}>
+              Highlighted keys = notes to press
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const LearnPage=()=>{
+  const hash=useHash();
+  const chordParam=hash.startsWith('#/learn/')?decodeURIComponent(hash.split('/')[2]):null;
+  const[search,setSearch]=useState('');
+  const[selectedRoot,setSelectedRoot]=useState(null);
+  const[filter,setFilter]=useState('');
+  const[modal,setModal]=useState(chordParam||null);
+  const[instView,setInstView]=useState('guitar');
+
+  useEffect(()=>{if(chordParam)setModal(chordParam)},[chordParam]);
+  const closeModal=()=>{setModal(null);if(chordParam)go('#/learn')};
+
+  // Build all chords
+  const allChords=[];
+  CHORD_TYPES.forEach(ct=>{
+    ROOT_NOTES.forEach(r=>{
+      allChords.push({name:r+ct.suffix,root:r,type:ct.suffix,typeLabel:ct.label});
+    });
+  });
+
+  // Apply filters
+  let shown=allChords;
+  if(selectedRoot)shown=shown.filter(c=>c.root===selectedRoot);
+  if(filter)shown=shown.filter(c=>c.type===filter);
+  if(search.trim()){
+    const q=search.trim().toLowerCase();
+    shown=shown.filter(c=>c.name.toLowerCase().includes(q));
+  }
+
+  // Group by type for display
+  const groups={};
+  shown.forEach(c=>{
+    if(!groups[c.type])groups[c.type]={label:c.typeLabel,chords:[]};
+    groups[c.type].chords.push(c);
+  });
+
+  const toggleRoot=(r)=>setSelectedRoot(selectedRoot===r?null:r);
+
+  return(
+    <div className="page">
+      <div className="container">
+        <div className="sec-hd"><h2>Chord Library</h2></div>
+
+        {/* Search + View toggle row */}
+        <div className="learn-header">
+          <div className="learn-search">
+            {Ico.search}
+            <input placeholder="Search chords... (e.g. Am7)" value={search} onChange={e=>setSearch(e.target.value)}/>
+          </div>
+          <div className="tabs" style={{marginBottom:0}}>
+            <div className={`tab ${instView==='guitar'?'on':''}`} onClick={()=>setInstView('guitar')}>🎸 Guitar</div>
+            <div className={`tab ${instView==='piano'?'on':''}`} onClick={()=>setInstView('piano')}>🎹 Piano</div>
+            <div className={`tab ${instView==='both'?'on':''}`} onClick={()=>setInstView('both')}>Both</div>
+          </div>
+        </div>
+
+        {/* Root note picker */}
+        <div className="root-picker">
+          <div style={{width:'100%',marginBottom:'0.3rem',fontSize:'0.7rem',color:'var(--tx2)',fontWeight:600,textTransform:'uppercase',letterSpacing:'1px'}}>Select Root Note</div>
+          {ROOT_NOTES.map(r=>(
+            <div key={r} className={`root-note ${selectedRoot===r?'on':''}`} onClick={()=>toggleRoot(r)}>{r}</div>
+          ))}
+          {selectedRoot&&<div style={{marginLeft:'auto',alignSelf:'center'}}><button style={{color:'var(--tx2)',fontSize:'0.8rem',textDecoration:'underline'}} onClick={()=>setSelectedRoot(null)}>Clear</button></div>}
+        </div>
+
+        {/* Type filter pills */}
+        <div className="filter-bar">
+          <button className={`filter-btn ${filter===''?'on':''}`} onClick={()=>setFilter('')}>All Types</button>
+          {CHORD_TYPES.map(ct=>(
+            <button key={ct.suffix} className={`filter-btn ${filter===ct.suffix?'on':''}`} onClick={()=>setFilter(ct.suffix)}>{ct.label}</button>
+          ))}
+        </div>
+
+        {/* Grouped chord display */}
+        {Object.keys(groups).length===0?(
+          <div className="no-results">
+            <h3>No chords found</h3>
+            <p>Try adjusting your search or filters.</p>
+          </div>
+        ):(
+          Object.entries(groups).map(([type,group])=>(
+            <div className="chord-group" key={type}>
+              <div className="chord-group-header">
+                <h3>{group.label} Chords</h3>
+                <div className="line"/>
+                <div className="count">{group.chords.length}</div>
+              </div>
+              <div className="lib-grid">
+                {group.chords.map(c=>{
+                  const notes=getChordNotes(c.name);
+                  return(
+                    <div className="lib-card" key={c.name} onClick={()=>setModal(c.name)}>
+                      <div className="cn">{c.name}</div>
+                      <div className="type-tag">{c.typeLabel}</div>
+                      <div className="notes">{notes.join(' – ')}</div>
+                      <div className="diagram-wrap">
+                        {(instView==='guitar'||instView==='both')&&<GuitarSVG name={c.name} size="sm"/>}
+                        {(instView==='piano'||instView==='both')&&<PianoSVG name={c.name} size="sm"/>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {modal&&<ChordModal name={modal} onClose={closeModal}/>}
+    </div>
+  );
+};
+
+/* ===================================================
+   PRACTICE PAGE — Expanded
+   =================================================== */
+const PracticePage=({metro})=>{
+  const[section,setSection]=useState('metro');
+
+  const guitarExercises=[
+    {cat:'Chord Transitions',icon:'🔄',items:[
+      {name:'Am → C → G → F',tip:'Keep index finger planted between Am and C',level:'Beginner'},
+      {name:'G → D → Em → C',tip:'Practice the G→D switch slowly, lift fingers together',level:'Beginner'},
+      {name:'E → A → D → A',tip:'Classic rock transition, anchor your index finger',level:'Beginner'},
+      {name:'Bm → G → D → A',tip:'Barre chord practice — keep bar pressure even',level:'Intermediate'},
+      {name:'F → Am → Dm → G',tip:'Barre F to open Am — focus on clean release',level:'Intermediate'},
+      {name:'Dm7 → G7 → Cmaj7',tip:'Jazz ii-V-I — smooth voice leading between shapes',level:'Advanced'},
+    ]},
+    {cat:'Strumming Patterns',icon:'🎸',items:[
+      {name:'Basic Down: D D D D',tip:'Keep wrist loose, strum from elbow. Use with metronome at 70 BPM',level:'Beginner'},
+      {name:'Down-Up: D DU DU DU',tip:'The most common pop pattern. Accent the downstrokes',level:'Beginner'},
+      {name:'Folk: D  DU UDU',tip:'Skip the 3rd downstroke — your hand still moves down but misses the strings',level:'Intermediate'},
+      {name:'Reggae: .U .U .U .U',tip:'Mute on beat 1 & 3, strum up on 2 & 4 (offbeats)',level:'Intermediate'},
+      {name:'Funky 16th: D.DU.UDU',tip:'16th note strumming — keep constant hand motion, ghost strums on mutes',level:'Advanced'},
+      {name:'Percussive: D x DU x DU',tip:'Slap strings with palm on "x" beats for percussive effect',level:'Advanced'},
+    ]},
+    {cat:'Fingerpicking Patterns',icon:'🤌',items:[
+      {name:'Travis Pick: T-1-2-1-T-1-2-1',tip:'Thumb alternates bass (6th/5th), fingers pick 3rd-2nd-1st strings',level:'Intermediate'},
+      {name:'Arpeggio: T-3-2-1-2-3',tip:'Classic broken chord — keep each note ringing. Try on Am first',level:'Beginner'},
+      {name:'Dust in the Wind: T12-T12-T12',tip:'Thumb + 2 fingers simultaneously, then thumb + 2 fingers. 3/4 time',level:'Intermediate'},
+      {name:'Classical: p-i-m-a-m-i',tip:'Use proper right hand form — thumb bass, index-middle-ring on treble',level:'Advanced'},
+      {name:'Banjo Roll: T-2-1-T-2-1-T',tip:'Continuous flowing motion. Great for country/folk. Start slow!',level:'Advanced'},
+    ]},
+    {cat:'Barre Chord Workout',icon:'💪',items:[
+      {name:'F shape: F → F# → G → G#',tip:'Move the full E-shape barre up one fret at a time. Check each string rings clean',level:'Intermediate'},
+      {name:'Bm shape: Bm → Cm → C#m → Dm',tip:'A-shape minor barre, slide up. Thumb behind neck, not over top',level:'Intermediate'},
+      {name:'Power Chords: 5th fret → 7th → 9th',tip:'Two-finger power chords — root + 5th. Great for rock',level:'Beginner'},
+      {name:'Barre Endurance: Hold F for 30s',tip:'Press and release every 30 seconds. Build hand strength gradually',level:'Intermediate'},
+    ]},
+    {cat:'Speed & Accuracy',icon:'⚡',items:[
+      {name:'Chromatic Spider: 1-2-3-4 each string',tip:'Frets 1-2-3-4 on each string, low to high. Use metronome, increase 5 BPM daily',level:'Beginner'},
+      {name:'String Skipping: 6th-4th-2nd strings',tip:'Pick accuracy drill — skip strings cleanly without hitting adjacent ones',level:'Intermediate'},
+      {name:'Hammer-ons: 0h2h3 on each string',tip:'Pick once, hammer twice. Build left hand strength and speed',level:'Intermediate'},
+      {name:'Pull-offs: 3p2p0 on each string',tip:'Reverse of hammer-ons — flick finger off the string cleanly',level:'Intermediate'},
+    ]},
+  ];
+
+  const pianoExercises=[
+    {cat:'Major Scales (Both Hands)',icon:'🎵',items:[
+      {name:'C Major: C D E F G A B C',tip:'All white keys. RH fingering: 1-2-3-1-2-3-4-5. Thumb tucks under after 3rd finger',level:'Beginner'},
+      {name:'G Major: G A B C D E F# G',tip:'One sharp (F#). Same fingering as C major. Watch the F#!',level:'Beginner'},
+      {name:'D Major: D E F# G A B C# D',tip:'Two sharps (F#, C#). RH: 1-2-3-1-2-3-4-5',level:'Beginner'},
+      {name:'F Major: F G A Bb C D E F',tip:'One flat (Bb). RH starts with thumb, finger 4 on Bb',level:'Intermediate'},
+      {name:'Bb Major: Bb C D Eb F G A Bb',tip:'Two flats. RH: 4-1-2-3-1-2-3-4. Start with 4th finger!',level:'Intermediate'},
+      {name:'All 12 Major Scales',tip:'Practice each scale 4 octaves, hands together. Metronome at 80 BPM quarter notes',level:'Advanced'},
+    ]},
+    {cat:'Minor Scales',icon:'🎶',items:[
+      {name:'A Natural Minor: A B C D E F G A',tip:'All white keys starting on A. Same notes as C major (relative minor)',level:'Beginner'},
+      {name:'E Natural Minor: E F# G A B C D E',tip:'Relative minor of G major. RH: 1-2-3-1-2-3-4-5',level:'Beginner'},
+      {name:'D Harmonic Minor: D E F G A Bb C# D',tip:'Natural minor but raise the 7th note. Creates dramatic sound',level:'Intermediate'},
+      {name:'A Melodic Minor: raise 6th & 7th going up',tip:'A B C D E F# G# A (up), A G F E D C B A (down = natural)',level:'Intermediate'},
+    ]},
+    {cat:'Arpeggio Exercises',icon:'🌊',items:[
+      {name:'C Major Arpeggio: C-E-G-C',tip:'Root-3rd-5th-8va. RH: 1-2-3-5. Play ascending & descending',level:'Beginner'},
+      {name:'Am Arpeggio: A-C-E-A',tip:'Minor arpeggio. Same fingering. Feel the minor 3rd interval',level:'Beginner'},
+      {name:'Broken Chords: 1-3-5-8-5-3',tip:'Full pattern up and down. Keep steady tempo and even volume',level:'Intermediate'},
+      {name:'7th Arpeggios: Cmaj7, Dm7, G7',tip:'Add the 7th. Cmaj7: C-E-G-B. Dm7: D-F-A-C. G7: G-B-D-F',level:'Intermediate'},
+      {name:'Two-Hand Arpeggios: LH bass + RH broken',tip:'Left hand plays root-5th, right hand plays 1-3-5-8. Coordinate!',level:'Advanced'},
+    ]},
+    {cat:'Finger Independence',icon:'🖐️',items:[
+      {name:'Hanon No.1: C-D-E-F-G pattern',tip:'Classic Hanon exercise. Even touch, curved fingers, relaxed wrist',level:'Beginner'},
+      {name:'Contrary Motion: hands move apart',tip:'Both hands play C major but in opposite directions. Builds coordination',level:'Intermediate'},
+      {name:'Trill Exercise: 2-3, 3-4, 4-5',tip:'Rapid alternation between finger pairs. Start very slow, increase gradually',level:'Intermediate'},
+      {name:'Thumb Under Practice',tip:'Scale passage: 1-2-3-1-2-3-4-5. Focus on smooth thumb crossing',level:'Beginner'},
+      {name:'Octave Jumps: jump octaves cleanly',tip:'Play a note, jump up an octave, back down. Accuracy over speed',level:'Advanced'},
+    ]},
+    {cat:'Chord Voicings & Comping',icon:'🎹',items:[
+      {name:'Triads: root, 1st inv, 2nd inv',tip:'C: C-E-G, E-G-C, G-C-E. Practice all 12 keys, all inversions',level:'Intermediate'},
+      {name:'Pop Comping: LH root + RH chord',tip:'Left hand plays root note, right hand plays chord. Simple and effective',level:'Beginner'},
+      {name:'Shell Voicings: root-3rd-7th',tip:'Jazz voicings — skip the 5th. Cmaj7: C-E-B. Dm7: D-F-C',level:'Advanced'},
+      {name:'Stride Pattern: bass-chord-bass-chord',tip:'LH jumps: low root → mid chord → low 5th → mid chord. Classic jazz piano',level:'Advanced'},
+    ]},
+  ];
+
+  const progressions=[
+    {name:'Pop (I-V-vi-IV)',key:'C',chords:['C','G','Am','F'],level:'Beginner',genre:'Pop'},
+    {name:'Blues (I-IV-V)',key:'A',chords:['A','D','E'],level:'Beginner',genre:'Blues'},
+    {name:'Rock (I-bVII-IV)',key:'G',chords:['G','F','C'],level:'Beginner',genre:'Rock'},
+    {name:'Jazz ii-V-I',key:'C',chords:['Dm7','G7','Cmaj7'],level:'Advanced',genre:'Jazz'},
+    {name:'Sad (vi-IV-I-V)',key:'C',chords:['Am','F','C','G'],level:'Beginner',genre:'Pop'},
+    {name:'50s (I-vi-IV-V)',key:'C',chords:['C','Am','F','G'],level:'Beginner',genre:'Rock'},
+    {name:'Andalusian (i-bVII-bVI-V)',key:'Am',chords:['Am','G','F','E'],level:'Intermediate',genre:'Flamenco'},
+    {name:'Reggae (I-IV)',key:'G',chords:['G','C'],level:'Beginner',genre:'Reggae'},
+    {name:'Bollywood (vi-IV-I-V)',key:'Am',chords:['Am','F','C','G'],level:'Beginner',genre:'Bollywood'},
+    {name:'12-Bar Blues',key:'A',chords:['A','A','A','A','D','D','A','A','E','D','A','E'],level:'Intermediate',genre:'Blues'},
+    {name:'Pachelbel Canon',key:'D',chords:['D','A','Bm','F#m','G','D','G','A'],level:'Intermediate',genre:'Classical'},
+    {name:'Axis of Awesome',key:'E',chords:['E','B','C#m','A'],level:'Beginner',genre:'Pop'},
+  ];
+
+  const levelColor={Beginner:'var(--gn)',Intermediate:'var(--or)',Advanced:'var(--rd)'};
+
+  const ExCard=({item})=>(
+    <div className="song-card" style={{cursor:'default'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.6rem'}}>
+        <h3 style={{fontSize:'1rem',flex:1}}>{item.name}</h3>
+        <span className="badge" style={{borderColor:levelColor[item.level],color:levelColor[item.level],fontSize:'0.65rem',flexShrink:0}}>{item.level}</span>
+      </div>
+      <p style={{color:'var(--tx2)',fontSize:'0.82rem',lineHeight:1.5}}>{item.tip}</p>
+    </div>
+  );
+
+  return(
+    <div className="page">
+      <div className="container">
+        <div className="sec-hd"><h2>Practice Tools</h2></div>
+
+        {/* Section tabs */}
+        <div className="tabs" style={{marginBottom:'2rem'}}>
+          <div className={`tab ${section==='metro'?'on':''}`} onClick={()=>setSection('metro')}>🥁 Metronome</div>
+          <div className={`tab ${section==='guitar'?'on':''}`} onClick={()=>setSection('guitar')}>🎸 Guitar</div>
+          <div className={`tab ${section==='piano'?'on':''}`} onClick={()=>setSection('piano')}>🎹 Piano</div>
+          <div className={`tab ${section==='scales'?'on':''}`} onClick={()=>setSection('scales')}>🎼 Scales</div>
+          <div className={`tab ${section==='prog'?'on':''}`} onClick={()=>setSection('prog')}>🎵 Progressions</div>
+        </div>
+
+        {/* METRONOME */}
+        {section==='metro'&&(
+          <div className="metro-wrap">
+            <h3 style={{fontFamily:'var(--hd)',marginBottom:'1.5rem',fontSize:'1.3rem'}}>Metronome</h3>
+            <MetronomeUI m={metro} big/>
+          </div>
+        )}
+
+        {/* GUITAR EXERCISES */}
+        {section==='guitar'&&(
+          <div>
+            {guitarExercises.map((cat,ci)=>(
+              <div key={ci} style={{marginBottom:'2.5rem'}}>
+                <div className="sec-hd"><h2>{cat.icon} {cat.cat}</h2></div>
+                <div className="grid grid-3">
+                  {cat.items.map((item,ii)=><ExCard key={ii} item={item}/>)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* PIANO EXERCISES */}
+        {section==='piano'&&(
+          <div>
+            {pianoExercises.map((cat,ci)=>(
+              <div key={ci} style={{marginBottom:'2.5rem'}}>
+                <div className="sec-hd"><h2>{cat.icon} {cat.cat}</h2></div>
+                <div className="grid grid-3">
+                  {cat.items.map((item,ii)=><ExCard key={ii} item={item}/>)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ALL 24 SCALES */}
+        {section==='scales'&&(()=>{
+          const SHARPS_ORDER=['F','C','G','D','A','E','B'];
+          const FLATS_ORDER=['B','E','A','D','G','C','F'];
+          const majorInfo=[
+            {root:'C',sig:'No sharps or flats',rh:'1-2-3-1-2-3-4-5',lh:'5-4-3-2-1-3-2-1'},
+            {root:'G',sig:'1 sharp (F#)',rh:'1-2-3-1-2-3-4-5',lh:'5-4-3-2-1-3-2-1'},
+            {root:'D',sig:'2 sharps (F#, C#)',rh:'1-2-3-1-2-3-4-5',lh:'5-4-3-2-1-3-2-1'},
+            {root:'A',sig:'3 sharps (F#, C#, G#)',rh:'1-2-3-1-2-3-4-5',lh:'5-4-3-2-1-3-2-1'},
+            {root:'E',sig:'4 sharps (F#, C#, G#, D#)',rh:'1-2-3-1-2-3-4-5',lh:'5-4-3-2-1-3-2-1'},
+            {root:'B',sig:'5 sharps (F#, C#, G#, D#, A#)',rh:'1-2-3-1-2-3-4-5',lh:'4-3-2-1-4-3-2-1'},
+            {root:'F#',sig:'6 sharps (all except B♮)',rh:'2-3-4-1-2-3-1-2',lh:'4-3-2-1-3-2-1-4'},
+            {root:'F',sig:'1 flat (Bb)',rh:'1-2-3-4-1-2-3-4',lh:'5-4-3-2-1-3-2-1'},
+            {root:'Bb',sig:'2 flats (Bb, Eb)',rh:'4-1-2-3-1-2-3-4',lh:'3-2-1-4-3-2-1-3'},
+            {root:'Eb',sig:'3 flats (Bb, Eb, Ab)',rh:'3-1-2-3-4-1-2-3',lh:'3-2-1-4-3-2-1-3'},
+            {root:'Ab',sig:'4 flats (Bb, Eb, Ab, Db)',rh:'3-4-1-2-3-1-2-3',lh:'3-2-1-4-3-2-1-3'},
+            {root:'Db',sig:'5 flats (Bb, Eb, Ab, Db, Gb)',rh:'2-3-1-2-3-4-1-2',lh:'3-2-1-4-3-2-1-3'},
+          ];
+          const minorInfo=[
+            {root:'A',sig:'No sharps or flats (relative of C)',rh:'1-2-3-1-2-3-4-5',lh:'5-4-3-2-1-3-2-1'},
+            {root:'E',sig:'1 sharp — F# (relative of G)',rh:'1-2-3-1-2-3-4-5',lh:'5-4-3-2-1-3-2-1'},
+            {root:'B',sig:'2 sharps — F#, C# (relative of D)',rh:'1-2-3-1-2-3-4-5',lh:'4-3-2-1-4-3-2-1'},
+            {root:'F#',sig:'3 sharps — F#, C#, G# (relative of A)',rh:'2-3-1-2-3-1-2-3',lh:'4-3-2-1-3-2-1-4'},
+            {root:'C#',sig:'4 sharps — F#, C#, G#, D# (relative of E)',rh:'3-4-1-2-3-1-2-3',lh:'3-2-1-4-3-2-1-3'},
+            {root:'G#',sig:'5 sharps — F#, C#, G#, D#, A# (relative of B)',rh:'3-4-1-2-3-1-2-3',lh:'3-2-1-4-3-2-1-3'},
+            {root:'D',sig:'1 flat — Bb (relative of F)',rh:'1-2-3-1-2-3-4-5',lh:'5-4-3-2-1-3-2-1'},
+            {root:'G',sig:'2 flats — Bb, Eb (relative of Bb)',rh:'1-2-3-1-2-3-4-5',lh:'5-4-3-2-1-3-2-1'},
+            {root:'C',sig:'3 flats — Bb, Eb, Ab (relative of Eb)',rh:'1-2-3-1-2-3-4-5',lh:'5-4-3-2-1-3-2-1'},
+            {root:'F',sig:'4 flats — Bb, Eb, Ab, Db (relative of Ab)',rh:'1-2-3-4-1-2-3-4',lh:'5-4-3-2-1-3-2-1'},
+            {root:'Bb',sig:'5 flats — Bb, Eb, Ab, Db, Gb (relative of Db)',rh:'4-1-2-3-1-2-3-4',lh:'2-1-3-2-1-4-3-2'},
+            {root:'Eb',sig:'6 flats (relative of Gb)',rh:'3-1-2-3-4-1-2-3',lh:'2-1-4-3-2-1-3-2'},
+          ];
+
+          const ScaleCard=({root,suffix,sig,rh,lh})=>{
+            const keyStr=root+(suffix==='m'?'m':'');
+            const notes=getScaleNotes(keyStr);
+            const label=suffix==='m'?'Minor':'Major';
+            const color=suffix==='m'?'var(--ac3)':'var(--ac)';
+            return(
+              <div className="song-card" style={{cursor:'default'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.5rem'}}>
+                  <h3 style={{fontSize:'1.3rem',color}}>{root} {label}</h3>
+                  <span className="badge" style={{borderColor:color,color,fontSize:'0.65rem'}}>{suffix==='m'?'Minor':'Major'}</span>
+                </div>
+                <div style={{fontSize:'0.75rem',color:'var(--tx2)',marginBottom:'0.8rem'}}>{sig}</div>
+                <div className="scale-notes" style={{marginBottom:'0.8rem'}}>
+                  {notes.map((n,i)=><span key={i} className="sn" style={i===0?{background:color,color:'#000',borderColor:color}:{borderColor:color+'33',color}}>{n}</span>)}
+                </div>
+                <div style={{display:'flex',gap:'1rem',flexWrap:'wrap'}}>
+                  <div>
+                    <div style={{fontSize:'0.65rem',color:'var(--tx2)',fontWeight:700,marginBottom:'0.15rem'}}>RH FINGERING</div>
+                    <div style={{fontFamily:'monospace',fontSize:'0.8rem',letterSpacing:'1px'}}>{rh}</div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:'0.65rem',color:'var(--tx2)',fontWeight:700,marginBottom:'0.15rem'}}>LH FINGERING</div>
+                    <div style={{fontFamily:'monospace',fontSize:'0.8rem',letterSpacing:'1px'}}>{lh}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          };
+
+          return(
+            <div>
+              <div className="sec-hd"><h2>Major Scales (12)</h2></div>
+              <div className="grid grid-3" style={{marginBottom:'2.5rem'}}>
+                {majorInfo.map(s=><ScaleCard key={s.root} root={s.root} suffix="" sig={s.sig} rh={s.rh} lh={s.lh}/>)}
+              </div>
+              <div className="sec-hd"><h2>Natural Minor Scales (12)</h2></div>
+              <div className="grid grid-3">
+                {minorInfo.map(s=><ScaleCard key={s.root} root={s.root} suffix="m" sig={s.sig} rh={s.rh} lh={s.lh}/>)}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* CHORD PROGRESSIONS */}
+        {section==='prog'&&(
+          <div>
+            <div className="sec-hd"><h2>Chord Progressions to Practice</h2></div>
+            <div className="grid grid-3">
+              {progressions.map((pg,i)=>(
+                <div className="song-card" key={i} style={{cursor:'default'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.3rem'}}>
+                    <span className="badge" style={{borderColor:levelColor[pg.level],color:levelColor[pg.level],fontSize:'0.65rem'}}>{pg.level}</span>
+                    <span className="badge">{pg.genre}</span>
+                  </div>
+                  <div className="artist">Key of {pg.key}</div>
+                  <h3 style={{fontSize:'1.05rem'}}>{pg.name}</h3>
+                  <div className="chords-prev" style={{marginTop:'0.8rem',fontSize:'1rem',fontWeight:700,color:'var(--ac)'}}>
+                    {pg.chords.join(' → ')}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ===================================================
+   ROOT APP
+   =================================================== */
+const App=()=>{
+  const hash=useHash();
+  const metro=useMetronome();
+  const[miniOpen,setMiniOpen]=useState(false);
+  const pg=hash.split('/')[1]||'';
+
+  let content;
+  if(pg==='songs')content=<SongsPage metro={metro}/>;
+  else if(pg==='learn')content=<LearnPage/>;
+  else if(pg==='practice')content=<PracticePage metro={metro}/>;
+  else content=<HomePage/>;
+
+  return(
+    <div className="app">
+      <Navbar hash={hash}/>
+      {content}
+
+      {/* Floating Metronome (available on all pages except Practice) */}
+      {pg!=='practice'&&(
+        <div className="metro-float">
+          <div className={`metro-mini ${miniOpen?'open':''}`}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
+              <h4 style={{fontFamily:'var(--hd)',fontSize:'1rem'}}>Metronome</h4>
+              <button onClick={()=>{metro.setPlaying(false);setMiniOpen(false)}} style={{color:'var(--tx2)'}}>{Ico.x}</button>
+            </div>
+            <MetronomeUI m={metro}/>
+          </div>
+          <button className="metro-fab" onClick={()=>setMiniOpen(!miniOpen)}>{Ico.metro}</button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
