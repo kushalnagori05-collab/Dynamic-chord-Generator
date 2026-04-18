@@ -574,6 +574,32 @@ const SongDetail=({song,metro})=>{
   const scale=getScaleNotes(key);
   let capo=(song.guitar.capo+tr)%12;if(capo<0)capo+=12;
 
+  const playScale=()=>{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    let oct=0,last=-1;
+    scale.forEach((n,i)=>{
+      let x=noteIdx(n);if(x<last)oct++;last=x;
+      const f=261.63*Math.pow(2,(x+oct*12)/12);
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type='triangle';o.frequency.value=f;
+      g.gain.setValueAtTime(0.15,ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.8);
+      o.connect(g);g.connect(ctx.destination);
+      o.start(ctx.currentTime+i*0.25);
+      o.stop(ctx.currentTime+i*0.25+0.8);
+    });
+    // Final octave note
+    let fx=noteIdx(scale[0]);if(fx<last)oct++;
+    const ff=261.63*Math.pow(2,(fx+oct*12)/12);
+    const fo=ctx.createOscillator(),fg=ctx.createGain();
+    fo.type='triangle';fo.frequency.value=ff;
+    fg.gain.setValueAtTime(0.15,ctx.currentTime);
+    fg.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+1.5);
+    fo.connect(fg);fg.connect(ctx.destination);
+    fo.start(ctx.currentTime+scale.length*0.25);
+    fo.stop(ctx.currentTime+scale.length*0.25+1.5);
+  };
+
   return(
     <div className="detail">
       <div className="back-btn" onClick={()=>go('#/songs')}>{Ico.back} Back to Songs</div>
@@ -590,7 +616,10 @@ const SongDetail=({song,metro})=>{
           </div>
           {showScale&&(
             <div className="scale-box">
-              <div style={{fontSize:'0.8rem',color:'var(--tx2)',marginBottom:'0.3rem'}}>{key} Scale</div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.5rem'}}>
+                <div style={{fontSize:'0.8rem',color:'var(--tx2)'}}>{key} Scale</div>
+                <button className="btn btn-ghost" onClick={playScale} style={{padding:'0.2rem 0.8rem',fontSize:'0.75rem'}}>🔊 Play Scale</button>
+              </div>
               <div className="scale-notes">{scale.map((n,i)=><span key={i} className="sn">{n}</span>)}</div>
             </div>
           )}
