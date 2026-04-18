@@ -102,7 +102,7 @@ var CHORD_TYPES=[
 var ROOT_NOTES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];var SONGS=[
   // ===== ENGLISH SONGS =====
   {id:1,title:"Wonderwall",artist:"Oasis",bpm:87,key:"F#m",
-   chords:["Em7","G","Dsus4","A7sus4","Cadd9"],
+   chords:["F#m7","A","Esus4","B7sus4","Dadd9"],
    guitar:{capo:2,strum:"D  D  U  U  D  U"},piano:{arp:"1-5-8 (driving eighths)"}},
   {id:2,title:"Let It Be",artist:"The Beatles",bpm:72,key:"C",
    chords:["C","G","Am","F"],
@@ -113,8 +113,8 @@ var ROOT_NOTES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];var SONGS=
   {id:4,title:"Hotel California",artist:"Eagles",bpm:74,key:"Bm",
    chords:["Bm","F#","A","E","G","D","Em"],
    guitar:{capo:0,strum:"D  DU  UD  DU"},piano:{arp:"1-5-8 with pushes"}},
-  {id:5,title:"Perfect",artist:"Ed Sheeran",bpm:63,key:"G",
-   chords:["G","Em","C","D"],
+  {id:5,title:"Perfect",artist:"Ed Sheeran",bpm:63,key:"Ab",
+   chords:["Ab","Fm","Db","Eb"],
    guitar:{capo:1,strum:"D  DU  UDU"},piano:{arp:"1-3-5-8 (waltz 6/8)"}},
   {id:6,title:"Hallelujah",artist:"Leonard Cohen",bpm:56,key:"C",
    chords:["C","Am","F","G","E7"],
@@ -284,7 +284,69 @@ var ROOT_NOTES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];var SONGS=
    guitar:{capo:2,strum:"D  DU  UDU"},piano:{arp:"1-5-8-5 (quirky pop)"}},
   {id:60,title:"Believer",artist:"Imagine Dragons",bpm:125,key:"Am",
    chords:["Am","Am","F","E"],
-   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (rock anthem)"}}
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (rock anthem)"}},
+
+  // ===== LATEST & FAMOUS HINDI SONGS =====
+  {id:61,title:"Chaleya",artist:"Arijit Singh (Jawan)",bpm:115,key:"Cm",
+   chords:["Cm","Ab","Bb","Eb","Fm"],
+   guitar:{capo:3,strum:"D  D  U  U  D  U"},piano:{arp:"1-3-5-8 (bouncy 4/4)"}},
+  {id:62,title:"Apna Bana Le",artist:"Arijit Singh (Bhediya)",bpm:118,key:"D",
+   chords:["D","A","Bm","G"],
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8-5-3 (driving ballad)"}},
+  {id:63,title:"O Maahi",artist:"Arijit Singh (Dunki)",bpm:104,key:"F",
+   chords:["F","C","Dm","Bb"],
+   guitar:{capo:5,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8 (gentle pattern)"}},
+  {id:64,title:"Heeriye",artist:"Jasleen Royal & Arijit Singh",bpm:100,key:"Eb",
+   chords:["Eb","Bb","Cm","Ab"],
+   guitar:{capo:1,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (pop groove)"}},
+  {id:65,title:"Kahani Suno 2.0",artist:"Kaifi Khalil",bpm:98,key:"Gm",
+   chords:["Gm","Eb","F","Cm"],
+   guitar:{capo:3,strum:"D  D  DU  D"},piano:{arp:"1-3-5-8-5-3 (slow emotional)"}},
+  {id:66,title:"Pehle Bhi Main",artist:"Vishal Mishra (Animal)",bpm:105,key:"E",
+   chords:["E","C#m","A","B"],
+   guitar:{capo:4,strum:"D  DU  DU  DU"},piano:{arp:"1-5-8-5 (melancholy build)"}},
+  {id:67,title:"Kesariya",artist:"Arijit Singh (Brahmastra)",bpm:114,key:"C",
+   chords:["C","G","Am","F","Dm"],
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (bright pop)"}},
+  {id:68,title:"Tere Hawaale",artist:"Arijit Singh (Laal Singh Chaddha)",bpm:85,key:"F",
+   chords:["F","Bb","C","Dm"],
+   guitar:{capo:5,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8 (slow acoustic)"}},
+  {id:69,title:"Maan Meri Jaan",artist:"King",bpm:98,key:"Fm",
+   chords:["Fm","Db","Eb","Cm"],
+   guitar:{capo:1,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (hip-hop pop)"}},
+  {id:70,title:"Ranjha",artist:"B Praak (Shershaah)",bpm:85,key:"Eb",
+   chords:["Eb","Bb","Cm","Ab"],
+   guitar:{capo:1,strum:"D  D  D  D"},piano:{arp:"1-3-5-8-5-3 (intense emotional)"}},
+  {id:71,title:"Raataan Lambiyan",artist:"Jubin Nautiyal (Shershaah)",bpm:92,key:"Bb",
+   chords:["Bb","F","Gm","Eb"],
+   guitar:{capo:3,strum:"D  DU  UDU"},piano:{arp:"1-5-8-5 (romantic pop)"}},
+  {id:72,title:"Ve Kamleya",artist:"Arijit Singh (RARKPK)",bpm:86,key:"Fm",
+   chords:["Fm","Db","Eb","Ab"],
+   guitar:{capo:1,strum:"D  DU  DU  DU"},piano:{arp:"1-3-5-8 (dramatic progression)"}},
+  {id:73,title:"Tu Hai To Phir Aur Kya Chahiye",artist:"Arijit Singh (ZHZB)",bpm:105,key:"F",
+   chords:["F","C","Dm","Bb"],
+   guitar:{capo:5,strum:"D  DU  UDU"},piano:{arp:"1-5-8 (driving pop)"}},
+  {id:74,title:"Tum Kya Mile",artist:"Arijit Singh (RARKPK)",bpm:120,key:"C#m",
+   chords:["C#m","A","B","G#m"],
+   guitar:{capo:4,strum:"D  DU  DU  DU"},piano:{arp:"1-5-8-5 (fast waltz/rolling)"}},
+  {id:75,title:"Husn",artist:"Anuv Jain",bpm:84,key:"A",
+   chords:["A","E","D","F#m"],
+   guitar:{capo:0,strum:"D  D  DU  D"},piano:{arp:"1-3-5-8 (intimate indie)"}},
+  {id:76,title:"Alag Aasmaan",artist:"Anuv Jain",bpm:92,key:"D",
+   chords:["D","Bm","G","A"],
+   guitar:{capo:0,strum:"D  DU  UDU"},piano:{arp:"1-5-8-5 (ukulele style)"}},
+  {id:77,title:"Baarishein",artist:"Anuv Jain",bpm:120,key:"C",
+   chords:["Am","F","C","G"],
+   guitar:{capo:0,strum:"D  D  U  U  D  U"},piano:{arp:"1-3-5-8 (energetic indie)"}},
+  {id:78,title:"Samjho Na",artist:"Aditya Rikhari",bpm:95,key:"Am",
+   chords:["Am","F","C","G"],
+   guitar:{capo:0,strum:"D  DU  DU  DU"},piano:{arp:"1-5-8-5 (soft pop)"}},
+  {id:79,title:"Sajni",artist:"Arijit Singh (Laapataa Ladies)",bpm:102,key:"Eb",
+   chords:["Eb","Cm","Ab","Bb"],
+   guitar:{capo:1,strum:"D  DU  UDU"},piano:{arp:"1-3-5-8 (bouncy folk pop)"}},
+  {id:80,title:"Akhiyaan Gulaab",artist:"Mitraz (TBMAUJ)",bpm:110,key:"G#m",
+   chords:["G#m","B","F#","C#"],
+   guitar:{capo:4,strum:"D  DU  DU  DU"},piano:{arp:"1-5-8 (modern pop groove)"}}
 ];
 </script>
 
@@ -558,19 +620,20 @@ const SongDetail=({song,metro})=>{
         </div>
       )}
 
-      {tab==='guitar'&&capo!==0&&tr!==0&&(
-        <div className="tip-box">💡 <strong>Tip:</strong> Capo fret {capo} lets you play original shapes: {song.chords.join(', ')}</div>
+      {tab==='guitar'&&capo!==0&&(
+        <div className="tip-box">💡 <strong>Tip:</strong> With capo on fret {capo}, the chords shown below are the shapes you play. The absolute key is {key}.</div>
       )}
 
       <div className="sec-hd"><h2>Chords</h2></div>
       <div className="chords-row">
         {chords.map((c,i)=>{
           const notes=getChordNotes(c);
+          const displayChord = (tab === 'guitar' && capo > 0) ? transposeChord(c, -capo) : c;
           return(
-            <div className="chord-card" key={i} onClick={()=>go('#/learn/'+encodeURIComponent(c))} title="View in Chord Library">
-              <div className="cn">{c}</div>
+            <div className="chord-card" key={i} onClick={()=>go('#/learn/'+encodeURIComponent(displayChord))} title="View in Chord Library">
+              <div className="cn">{displayChord}</div>
               <div className="notes">{notes.join(' – ')}</div>
-              {tab==='guitar'?<GuitarSVG name={c} size="sm"/>:<PianoSVG name={c} size="sm"/>}
+              {tab==='guitar'?<GuitarSVG name={displayChord} size="sm"/>:<PianoSVG name={displayChord} size="sm"/>}
             </div>
           );
         })}

@@ -140,15 +140,20 @@ const SongDetail = ({ song, instrument, onBack }) => {
     setTransposeSteps(prev => prev + steps);
   };
 
-  const transposedChords = song.chords.map(c => window.transposeChord(c, transposeSteps));
+  const transposedAbsoluteChords = song.chords.map(c => window.transposeChord(c, transposeSteps));
   const newKey = window.transposeChord(song.key, transposeSteps);
 
   // Capo logic
-  // If we transpose up N steps (modulo 12), we can just place a capo on fret N and play original shapes!
+  let displayChords = transposedAbsoluteChords;
   let capoFret = song.guitar.capo;
   if (instrument === 'guitar') {
     capoFret = (song.guitar.capo + transposeSteps) % 12;
     if (capoFret < 0) capoFret += 12; // Handle negative 
+    
+    // The guitar player needs to see the chords relative to the capo (the shapes)
+    if (capoFret > 0) {
+      displayChords = transposedAbsoluteChords.map(c => window.transposeChord(c, -capoFret));
+    }
   }
 
   return (
@@ -186,14 +191,14 @@ const SongDetail = ({ song, instrument, onBack }) => {
 
       <h3 className="section-title">Chords Used</h3>
       
-      {instrument === 'guitar' && capoFret !== 0 && transposeSteps !== 0 && (
+      {instrument === 'guitar' && capoFret !== 0 && (
          <div style={{padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--green)', color: 'var(--green)', borderRadius: '8px', marginBottom: '1rem'}}>
-           <strong>Tip:</strong> With Capo on fret {capoFret}, you can play the original shapes: {song.chords.join(', ')}
+           <strong>Tip:</strong> With capo on fret {capoFret}, the chords shown below are the shapes you play. The absolute key you will be sounding is {newKey}.
          </div>
       )}
 
       <div className="chords-display">
-        {transposedChords.map((chord, index) => (
+        {displayChords.map((chord, index) => (
           <div className="chord-box" key={index}>
             <div className="chord-name">{chord}</div>
             

@@ -5,7 +5,7 @@ window.SONG_DATA = [
     artist: "Oasis",
     bpm: 87,
     key: "F#m",
-    chords: ["Em7", "G", "Dsus4", "A7sus4", "Cadd9"],
+    chords: ["F#m7", "A", "Esus4", "B7sus4", "Dadd9"],
     guitar: {
       capo: 2,
       strumming: "D-D-U-U-D-U" // D: Down, U: Up
